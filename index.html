@@ -1,0 +1,267 @@
+<!DOCTYPE html><html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>貓咪抽卡機</title>
+  <link rel="manifest" href="manifest.json" />
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js");
+    }
+  </script>
+  <style>
+    :root {
+      --border-radius: 1rem;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: #fff5f8;
+      color: #333;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      padding: 1rem;
+      background: linear-gradient(to right, #ffcccb, #ffe4e1);
+    }
+    #login, #main {
+      display: none;
+      padding: 1rem;
+    }
+    input {
+      padding: 0.5em;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid #ccc;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.8rem 1.5rem;
+      margin: 0.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 0.8rem;
+      background: #ffc0cb;
+      color: #000;
+      cursor: pointer;
+    }
+    .card {
+      width: 200px;
+      height: 266px;
+      perspective: 1000px;
+      margin: 1.5rem auto;
+    }
+    .card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: var(--border-radius);
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-size: cover;
+      background-position: center;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #fff;
+      flex-direction: column;
+    }
+    .card-front::before {
+      content: attr(data-rarity);
+      position: absolute;
+      top: 0.3rem;
+      left: 0.5rem;
+      background: rgba(0,0,0,0.6);
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+    }
+    .card-front {
+      background-image: url("card-R.png"); /* default */
+    }
+    .card-back {
+      background-image: url("Ggggg.png");
+      background-size: cover;
+      background-position: center;
+      transform: rotateY(180deg);
+    }
+  </style>
+</head>
+<body>
+  <h1>貓咪抽卡機</h1>  <div id="login">
+    <p>請輸入名字開始遊戲：</p>
+    <input type="text" id="nickname" placeholder="輸入名字" />
+    <br />
+    <button onclick="start()">登入</button>
+  </div>  <div id="main">
+    <p id="userInfo"></p>
+    <button onclick="drawCard()">抽卡</button>
+    <button onclick="showBag()">包包</button>
+    <button onclick="logout()">登出</button>
+    <p id="message"></p>
+    <div class="card" id="drawArea" onclick="flipCard()">
+      <div class="card-inner">
+        <div class="card-front" id="cardFront" data-rarity=""></div>
+        <div class="card-back"></div>
+      </div>
+    </div>
+  </div><audio id="flipSound" src="https://cdn.pixabay.com/audio/2022/03/10/audio_a4f90a5dc0.mp3"></audio> <audio id="drawSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_d8b9571a5e.mp3"></audio>
+
+  <script>
+    const rarities = [
+      { name: "SC", chance: 0.01 },
+      { name: "SGR", chance: 0.03 },
+      { name: "LSR", chance: 0.04 },
+      { name: "UR", chance: 0.12 },
+      { name: "R", chance: 0.80 }
+    ];
+
+    let user = null;
+    const maxDraws = 5;
+
+    function start() {
+      const name = document.getElementById("nickname").value.trim();
+      if (!name) return alert("請輸入暱稱");
+      user = name;
+      if (!localStorage[user]) {
+        const init = {
+          cards: {},
+          vip: 0,
+          lastDate: "",
+          draws: 0
+        };
+        localStorage[user] = JSON.stringify(init);
+        localStorage.lastUser = user;
+      }
+      loadData();
+      document.getElementById("login").style.display = "none";
+      document.getElementById("main").style.display = "block";
+    }
+
+    function logout() {
+      user = null;
+      document.getElementById("main").style.display = "none";
+      document.getElementById("login").style.display = "block";
+    }
+
+    function loadData() {
+      const data = JSON.parse(localStorage[user]);
+      const today = new Date().toISOString().split("T")[0];
+      if (data.lastDate !== today) {
+        data.draws = 0;
+        data.lastDate = today;
+      }
+      localStorage[user] = JSON.stringify(data);
+      updateUI(data);
+    }
+
+    function updateUI(data) {
+      document.getElementById("userInfo").textContent =
+        `暱稱：${user}　VIP 等級：${data.vip}　今日已抽 ${data.draws}/${maxDraws}`;
+    }
+
+    function drawCard() {
+      document.getElementById("drawSound").play();
+      const data = JSON.parse(localStorage[user]);
+      if (data.draws >= maxDraws) {
+        document.getElementById("message").textContent = "今天已經抽滿了！";
+        return;
+      }
+
+      const roll = Math.random();
+      let sum = 0;
+      let rarity = "R";
+
+      for (let r of rarities) {
+        sum += r.chance;
+        if (roll <= sum) {
+          rarity = r.name;
+          break;
+        }
+      }
+
+      if (rarity === "SC" && (data.cards["SC"] || 0) >= 1) {
+        rarity = "SGR";
+      }
+
+      const front = document.getElementById("cardFront");
+      front.style.backgroundImage = `url(card-${rarity}.png)`;
+      front.setAttribute("data-rarity", rarity);
+      document.getElementById("message").textContent = `你抽到了 ${rarity} 卡！點擊翻牌`;
+      saveCard(rarity);
+      updateUI(data);
+
+      document.getElementById("drawArea").classList.remove("flipped");
+      void drawArea.offsetWidth;
+      setTimeout(() => {
+        document.getElementById("drawArea").classList.add("flipped");
+      }, 100);
+    }
+
+    function flipCard() {
+      document.getElementById("flipSound").play();
+      document.getElementById("drawArea").classList.toggle("flipped");
+    }
+
+    function saveCard(rarity) {
+      const data = JSON.parse(localStorage[user]);
+      if (!data.cards[rarity]) data.cards[rarity] = 0;
+      data.cards[rarity]++;
+      data.draws++;
+      updateVip(data);
+      localStorage[user] = JSON.stringify(data);
+    }
+
+    function updateVip(data) {
+      let required = 30;
+      for (let i = 1; i <= data.vip; i++) {
+        required += Math.ceil(required * 0.5);
+      }
+
+      const score = 
+        (data.cards["R"] || 0) +
+        (data.cards["UR"] || 0) * 2 +
+        (data.cards["LSR"] || 0) * 6 +
+        (data.cards["SGR"] || 0) * 10 +
+        (data.cards["SC"] || 0) * 20;
+
+      if (score >= required) {
+        data.vip++;
+      }
+    }
+
+    function showBag() {
+      const data = JSON.parse(localStorage[user]);
+      const entries = Object.entries(data.cards || {});
+      if (entries.length === 0) {
+        alert("你還沒有卡片！");
+        return;
+      }
+      let msg = "目前卡片數量：\n";
+      for (let [rarity, count] of entries) {
+        msg += `${rarity}：${count} 張\n`;
+      }
+      alert(msg);
+    }
+
+    window.onload = () => {
+      if (localStorage.lastUser) {
+        document.getElementById("nickname").value = localStorage.lastUser;
+      }
+      document.getElementById("login").style.display = "block";
+    };
+  </script></body>
+</html>
