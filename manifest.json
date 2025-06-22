@@ -1,0 +1,21 @@
+{
+  "name": "貓咪抽卡機",
+  "short_name": "抽卡機",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#fff5f8",
+  "theme_color": "#ffc0cb",
+  "description": "一款可愛的貓咪抽卡遊戲，支援翻卡動畫與 VIP 升級！",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Koala.svg/192px-Koala.svg.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Koala.svg/512px-Koala.svg.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
