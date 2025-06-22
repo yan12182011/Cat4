@@ -72,7 +72,7 @@
   </div>
   <div id="game" style="display:none">
     <p>你好，<span id="user"></span>！VIP 等級：<span id="vip"></span></p>
-    <p>今日剩餘抽卡次數：<span id="draws"></span></p>
+    <p>今日剩餘抽卡次數（每日 10 次）：<span id=\"draws\"></span></p>
     <button onclick="draw()">抽卡</button>
     <button onclick="showBag()">查看包包</button>
     <button onclick="logout()">登出</button>
@@ -95,7 +95,7 @@
 
     function getUserData(nick) {
       const raw = localStorage.getItem("catgacha-" + nick);
-      return raw ? JSON.parse(raw) : { vip: 0, cards: {}, draws: 5 };
+      return raw ? JSON.parse(raw) : { vip: 0, cards: {}, draws: 10 };
     }
 
     function saveUserData(nick, data) {
